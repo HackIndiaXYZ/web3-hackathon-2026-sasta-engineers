@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: chaincred-postgres
+    environment:
+      POSTGRES_USER: chaincred
+      POSTGRES_PASSWORD: chaincred_dev_password
+      POSTGRES_DB: chaincred_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U chaincred']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chaincred-network
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: chaincred-redis
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chaincred-network
+
+  # Backend API (optional - can run locally)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: chaincred-backend
+  #   ports:
+  #     - '3001:3001'
+  #   environment:
+  #     NODE_ENV: development
+  #     DATABASE_URL: postgresql://chaincred:chaincred_dev_password@postgres:5432/chaincred_db
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./backend:/app
+  #     - /app/node_modules
+  #   networks:
+  #     - chaincred-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  chaincred-network:
+    driver: bridge
